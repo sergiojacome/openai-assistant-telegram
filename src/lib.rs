@@ -1,19 +1,3 @@
-use rusqlite::{Connection, Result};
-
-fn create_database() -> Result<()> {
-    let conn = Connection::open("telegram_bot.db")?;
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY,
-            message_type TEXT NOT NULL,
-            message_content TEXT NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )",
-        [],
-    )?;
-    Ok(())
-}
-
 use async_openai::{
     types::{
         CreateMessageRequestArgs, CreateRunRequestArgs, CreateThreadRequestArgs, MessageContent,
@@ -29,11 +13,6 @@ use tg_flows::{listen_to_update, update_handler, Telegram, UpdateKind};
 pub async fn on_deploy() {
     logger::init();
 
-    // Llama aquí a create_database() para inicializar la base de datos.
-    if let Err(e) = create_database() {
-        log::error!("Error al crear la base de datos: {:?}", e);
-    }
-
     // create_thread().await;
 
     let telegram_token = std::env::var("telegram_token").unwrap();
@@ -45,19 +24,10 @@ async fn handler(update: tg_flows::Update) {
     logger::init();
     let telegram_token = std::env::var("telegram_token").unwrap();
     let tele = Telegram::new(telegram_token);
-    // sqllite conn
-    let conn = Connection::open("telegram_bot.db").unwrap();
 
     if let UpdateKind::Message(msg) = update.kind {
         let text = msg.text().unwrap_or("");
         let chat_id = msg.chat.id;
-        let chat_id_str = chat_id.to_string();
-
-        // Registra mensaje entrante
-        conn.execute(
-            "INSERT INTO messages (message_type, message_content) VALUES ('incoming', ?1)",
-            &[&text],
-        ).unwrap();
 
 
         let thread_id = match store_flows::get(chat_id.to_string().as_str()) {
@@ -82,12 +52,6 @@ async fn handler(update: tg_flows::Update) {
 
         let response = run_message(thread_id.as_str(), String::from(text)).await;
         _ = tele.send_message(chat_id, response);
-
-        // Registra mensaje saliente
-        conn.execute(
-            "INSERT INTO messages (message_type, message_content) VALUES ('outgoing', ?1)",
-            &[&text],
-        ).unwrap();
 
     }
 }
