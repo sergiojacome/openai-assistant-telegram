@@ -1,3 +1,20 @@
+use rusqlite::{Connection, Result};
+
+fn create_database() -> Result<()> {
+    let conn = Connection::open("telegram_bot.db")?;
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY,
+            chat_id TEXT NOT NULL,
+            message_type TEXT NOT NULL,
+            message_content TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )",
+        [],
+    )?;
+    Ok(())
+}
+
 use async_openai::{
     types::{
         CreateMessageRequestArgs, CreateRunRequestArgs, CreateThreadRequestArgs, MessageContent,
@@ -24,10 +41,18 @@ async fn handler(update: tg_flows::Update) {
     logger::init();
     let telegram_token = std::env::var("telegram_token").unwrap();
     let tele = Telegram::new(telegram_token);
+    // sqllite conn
+    let conn = Connection::open("telegram_bot.db").unwrap();
 
     if let UpdateKind::Message(msg) = update.kind {
         let text = msg.text().unwrap_or("");
         let chat_id = msg.chat.id;
+
+        // Registra mensaje entrante
+        conn.execute(
+            "INSERT INTO messages (chat_id, message_type, message_content) VALUES (?1, 'incoming', ?2)",
+            &[&chat_id, &text],
+        ).unwrap();
 
         let thread_id = match store_flows::get(chat_id.to_string().as_str()) {
             Some(ti) => match text == "/restart" {
