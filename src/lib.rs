@@ -76,6 +76,12 @@ async fn handler(update: tg_flows::Update) {
 
         let response = run_message(thread_id.as_str(), String::from(text)).await;
         _ = tele.send_message(chat_id, response);
+
+        // Registra mensaje saliente
+        conn.execute(
+            "INSERT INTO messages (chat_id, message_type, message_content) VALUES (?1, 'outgoing', ?2)",
+            &[&chat_id, &response],
+        ).unwrap();
     }
 }
 
