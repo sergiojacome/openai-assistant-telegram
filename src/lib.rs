@@ -29,6 +29,11 @@ use tg_flows::{listen_to_update, update_handler, Telegram, UpdateKind};
 pub async fn on_deploy() {
     logger::init();
 
+    // Llama aquí a create_database() para inicializar la base de datos.
+    if let Err(e) = create_database() {
+        log::error!("Error al crear la base de datos: {:?}", e);
+    }
+
     // create_thread().await;
 
     let telegram_token = std::env::var("telegram_token").unwrap();
@@ -50,9 +55,10 @@ async fn handler(update: tg_flows::Update) {
 
         // Registra mensaje entrante
         conn.execute(
-            "INSERT INTO messages (message_type, message_content) VALUES ('incoming', ?2)",
+            "INSERT INTO messages (message_type, message_content) VALUES ('incoming', ?1)",
             &[&text],
         ).unwrap();
+
 
         let thread_id = match store_flows::get(chat_id.to_string().as_str()) {
             Some(ti) => match text == "/restart" {
@@ -79,9 +85,10 @@ async fn handler(update: tg_flows::Update) {
 
         // Registra mensaje saliente
         conn.execute(
-            "INSERT INTO messages (message_type, message_content) VALUES ('outgoing', ?2)",
+            "INSERT INTO messages (message_type, message_content) VALUES ('outgoing', ?1)",
             &[&text],
         ).unwrap();
+
     }
 }
 
