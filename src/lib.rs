@@ -5,7 +5,6 @@ fn create_database() -> Result<()> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY,
-            chat_id TEXT NOT NULL,
             message_type TEXT NOT NULL,
             message_content TEXT NOT NULL,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -51,8 +50,8 @@ async fn handler(update: tg_flows::Update) {
 
         // Registra mensaje entrante
         conn.execute(
-            "INSERT INTO messages (chat_id, message_type, message_content) VALUES (?1, 'incoming', ?2)",
-            &[&chat_id_str, &text],
+            "INSERT INTO messages (message_type, message_content) VALUES ('incoming', ?2)",
+            &[&text],
         ).unwrap();
 
         let thread_id = match store_flows::get(chat_id.to_string().as_str()) {
@@ -80,8 +79,8 @@ async fn handler(update: tg_flows::Update) {
 
         // Registra mensaje saliente
         conn.execute(
-            "INSERT INTO messages (chat_id, message_type, message_content) VALUES (?1, 'outgoing', ?2)",
-            &[&chat_id_str, &text],
+            "INSERT INTO messages (message_type, message_content) VALUES ('outgoing', ?2)",
+            &[&text],
         ).unwrap();
     }
 }
